@@ -8,6 +8,7 @@ use ic_cdk::{
 use ic_cdk_timers::set_timer_interval;
 use serde::{Deserialize, Serialize};
 
+mod hackernews;
 mod modulation;
 mod whalealert;
 
@@ -15,6 +16,8 @@ mod whalealert;
 pub struct State {
     pub logs: Vec<String>,
     pub last_block: u64,
+    #[serde(default)]
+    pub last_best_story: u64,
     pub modulation: i32,
 }
 
@@ -60,10 +63,12 @@ fn info(opcode: String) -> String {
 
 fn set_timer() {
     let _id = set_timer_interval(Duration::from_secs(60 * 60), || spawn(whalealert::go()));
-    let _id = set_timer_interval(
-        Duration::from_secs(24 * 60 * 60),
-        || spawn(modulation::go()),
-    );
+    let _id = set_timer_interval(Duration::from_secs(24 * 60 * 60), || spawn(daily_tasks()));
+}
+
+async fn daily_tasks() {
+    modulation::go().await;
+    hackernews::go().await;
 }
 
 #[ic_cdk_macros::init]
@@ -76,6 +81,11 @@ fn init() {
         STATE = Some(state);
     }
     set_timer();
+}
+
+#[ic_cdk_macros::update]
+async fn test() {
+    hackernews::go().await;
 }
 
 #[ic_cdk_macros::pre_upgrade]
