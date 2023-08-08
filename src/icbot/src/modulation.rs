@@ -11,10 +11,11 @@ pub async fn go() {
     .await
     .expect("couldn't call cmc");
     let new_modulation = response.expect("couldn't get the modulation");
-    state_mut().modulation = new_modulation;
-    state_mut()
+    let state = state_mut();
+    state.modulation = new_modulation;
+    state
         .logs
-        .push(format!("New modulation: {}", new_modulation));
+        .push(format!("Modulation: {} -> {}", modulation, new_modulation));
     let message = if new_modulation > modulation
         && (modulation <= 0 || new_modulation / 100 > modulation / 100)
     {
@@ -23,11 +24,12 @@ pub async fn go() {
             .collect::<Vec<_>>()
             .join("");
         format!(
-            "The neuron maturity #modulation is now {}! 📈{}",
-            new_modulation, rockets
+            "The neuron maturity #modulation is now `{}`! 📈{}",
+            100.0 + (new_modulation as f32 / 100.0),
+            rockets
         )
     } else if new_modulation < 0 && modulation >= 0 {
-        "The neuron maturity #modulation is now below 100. 📉".to_owned()
+        "The neuron maturity #modulation is now below `100`. 📉".to_owned()
     } else {
         return;
     };
