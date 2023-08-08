@@ -8,6 +8,7 @@ use ic_cdk::{
 use ic_cdk_timers::set_timer_interval;
 use serde::{Deserialize, Serialize};
 
+mod cryptocurrency;
 mod hackernews;
 mod modulation;
 mod whalealert;
@@ -18,12 +19,15 @@ pub struct State {
     pub last_block: u64,
     #[serde(default)]
     pub last_best_story: u64,
+    #[serde(default)]
+    pub last_best_post: String,
     pub modulation: i32,
 }
 
 static mut STATE: Option<State> = None;
 
 async fn post_to_taggr<T: ToString>(body: T, realm: Option<String>) -> String {
+    ic_cdk::println!("Sending: {}", body.to_string());
     let blobs: Vec<(String, Vec<u8>)> = Default::default();
     let parent: Option<u64> = None;
     let poll: Option<Vec<u8>> = None;
@@ -33,6 +37,7 @@ async fn post_to_taggr<T: ToString>(body: T, realm: Option<String>) -> String {
         (body.to_string(), blobs, parent, realm, poll),
     )
     .await;
+    ic_cdk::println!("Result: {:?}", &result);
     format!("{:?}", result)
 }
 
@@ -53,10 +58,11 @@ fn info(opcode: String) -> String {
     } else {
         let s = state();
         format!(
-            "Logs={}, LastBlock={}, Modulation={}",
+            "Logs={}, LastBlock={}, Modulation={}, LastBestStory={}",
             s.logs.len(),
             s.last_block,
             s.modulation,
+            s.last_best_story
         )
     }
 }
@@ -84,7 +90,7 @@ fn init() {
 }
 
 // #[ic_cdk_macros::update]
-// async fn test() {}
+// async fn test() -> String {}
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
