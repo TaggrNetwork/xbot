@@ -2,3 +2,8 @@
 members = [
     "src/icbot",
 ]
+
+[profile.release]
+lto = true
+opt-level = 2
+

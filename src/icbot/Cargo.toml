@@ -16,8 +16,3 @@ ic-cdk-timers = "0.4.0"
 ic-ledger-types = "0.7.0"
 num-format = "0.4.4"
 serde = { version = "1.0.179", features = ["derive"] }
-
-[profile.release]
-lto = true
-opt-level = 2
-
