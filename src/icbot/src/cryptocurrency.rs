@@ -78,7 +78,7 @@ pub async fn go() {
                 .and_then(|u| u.host_str().map(|host| host.to_string()))
                 .unwrap_or_default();
             let message = format!(
-                        "## [{}]({}) ({})\nToday's best #SubredditCryptoCurrency story: `{}` upvotes, [{} comments](https://reddit.com/{})",
+                        "## [{}]({}) ({})\nToday's best #CryptoCurrencySubreddit story: `{}` upvotes, [{} comments](https://reddit.com/{})",
                         title, url, publisher, ups, num_comments, permalink
                     );
             post_to_taggr(message, None).await;
