@@ -24,12 +24,12 @@ pub async fn go() {
             .collect::<Vec<_>>()
             .join("");
         format!(
-            "The neuron maturity #modulation is now `{}`! 📈{}",
+            "📈 The neuron maturity #modulation is now `{}` {}",
             100.0 + (new_modulation as f32 / 100.0),
             rockets
         )
     } else if new_modulation < 0 && modulation >= 0 {
-        "The neuron maturity #modulation is now below `100`. 📉".to_owned()
+        "📉 The neuron maturity #modulation is now below `100` ".to_owned()
     } else {
         return;
     };
