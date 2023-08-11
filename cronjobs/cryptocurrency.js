@@ -32,8 +32,16 @@ https
 
                 if (prevPermalink == permalink) return;
 
-                const publisher = urlParser.parse(url).hostname;
-                let message = `## [${title}](${url}) (${publisher})\\nToday's best #CryptoCurrencySubreddit story: \`${ups}\` upvotes, [${num_comments} comments](https://reddit.com/${permalink})`;
+                const publisher = urlParser
+                    .parse(url)
+                    .hostname.replace("www.", "");
+                let message =
+                    `### ${title}${
+                        publisher == "reddit.com"
+                            ? ""
+                            : ` [${publisher}](${url})`
+                    }\\n\\n` +
+                    `Today's best #CryptoCurrencySubreddit story: \`${ups}\` upvotes, [${num_comments} comments](https://reddit.com/${permalink})`;
                 message = message.replaceAll("'", "'\"'\"'");
                 const cmd = `dfx --identity icbot canister --network ic call 6qfxa-ryaaa-aaaai-qbhsq-cai add_post '("${message}", vec{})'`;
                 exec(cmd, (error, stdout, stderr) => {
