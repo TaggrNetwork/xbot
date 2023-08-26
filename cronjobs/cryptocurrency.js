@@ -31,6 +31,7 @@ https
                 });
 
                 if (prevPermalink == permalink) return;
+                fs.writeFileSync(stateFile, permalink);
 
                 const publisher = urlParser
                     .parse(url)
@@ -53,7 +54,6 @@ https
                         console.log(`stderr: ${stderr}`);
                         return;
                     }
-                    fs.writeFileSync(stateFile, permalink);
                     console.log(`Response: ${stdout}`);
                 });
             } catch (error) {
