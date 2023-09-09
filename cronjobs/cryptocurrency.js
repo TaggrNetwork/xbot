@@ -37,7 +37,7 @@ https
                     .parse(url)
                     .hostname.replace("www.", "");
                 let message =
-                    `#### ${title}${
+                    `"${title}"${
                         publisher == "reddit.com"
                             ? ""
                             : ` [${publisher}](${url})`
