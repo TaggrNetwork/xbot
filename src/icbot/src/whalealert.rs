@@ -117,6 +117,10 @@ pub fn get_accounts<'a>() -> HashMap<&'a str, &'a str> {
         "040834c30cdf5d7a13aae8b57d94ae2d07eefe2bc3edd8cf88298730857ac2eb",
         "Kraken",
     );
+    map.insert(
+        "609d3e1e45103a82adc97d4f88c51f78dedb25701e8e51e8c4fec53448aadc29",
+        "Binance Cold Storage",
+    );
 
     map
 }
