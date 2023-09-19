@@ -80,7 +80,7 @@ pub async fn go() {
                         .and_then(|u| u.host_str().map(|host| host.to_string()))
                         .unwrap_or_default();
                     let message = format!(
-                        "## [{}]({}) ({})\n#HackerNews story: `{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})",
+                        "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
                     post_to_taggr(message, None).await;

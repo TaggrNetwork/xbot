@@ -35,7 +35,7 @@ https
                 const link = url.includes("reddit.com")
                     ? `https://reddit.com/${permalink}`
                     : url;
-                let message = `> ${title}\\n\\n${link}\\n\\n\`${ups}\` upvotes, \`${num_comments}\` comments  #CryptoCurrencySubreddit`;
+                let message = `> ${title}\\n\\n${link}\\n\\n\`${ups}\` upvotes, \`${num_comments}\` comments\\n#CryptoCurrencySubreddit`;
                 message = message.replaceAll("'", "'\"'\"'");
                 const cmd = `dfx --identity icbot canister --network ic call 6qfxa-ryaaa-aaaai-qbhsq-cai add_post '("${message}", vec{})'`;
                 exec(cmd, (error, stdout, stderr) => {
