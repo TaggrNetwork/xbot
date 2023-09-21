@@ -16,7 +16,8 @@ pub async fn go() {
     state
         .logs
         .push(format!("Modulation: {} -> {}", modulation, new_modulation));
-    let message = if new_modulation > modulation
+    let message = if new_modulation > 0
+        && new_modulation > modulation
         && (modulation <= 0 || new_modulation / 100 > modulation / 100)
     {
         let rockets = (0..new_modulation / 100)
