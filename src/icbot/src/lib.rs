@@ -8,9 +8,9 @@ use ic_cdk::{
 use ic_cdk_timers::set_timer_interval;
 use serde::{Deserialize, Serialize};
 
-mod cryptocurrency;
 mod hackernews;
 mod modulation;
+mod watcherguru;
 mod whalealert;
 
 #[derive(Default, CandidType, Serialize, Deserialize)]
@@ -22,6 +22,8 @@ pub struct State {
     #[serde(default)]
     pub last_best_post: String,
     pub modulation: i32,
+    #[serde(default)]
+    pub last_wg_message: String,
 }
 
 static mut STATE: Option<State> = None;
@@ -58,23 +60,29 @@ fn info(opcode: String) -> String {
     } else {
         let s = state();
         format!(
-            "Logs={}, LastBlock={}, Modulation={}, LastBestStory={}",
+            "Logs={}, LastBlock={}, Modulation={}, LastBestStory={}, LastWGMsg={}",
             s.logs.len(),
             s.last_block,
             s.modulation,
-            s.last_best_story
+            s.last_best_story,
+            s.last_wg_message
         )
     }
 }
 
 fn set_timer() {
-    let _id = set_timer_interval(Duration::from_secs(60 * 60), || spawn(whalealert::go()));
+    let _id = set_timer_interval(Duration::from_secs(4 * 60 * 60), || spawn(hourly_tasks()));
     let _id = set_timer_interval(Duration::from_secs(24 * 60 * 60), || spawn(daily_tasks()));
 }
 
 async fn daily_tasks() {
     modulation::go().await;
     hackernews::go().await;
+}
+
+async fn hourly_tasks() {
+    whalealert::go().await;
+    watcherguru::go().await;
 }
 
 #[ic_cdk_macros::init]
@@ -90,7 +98,8 @@ fn init() {
 }
 
 // #[ic_cdk_macros::update]
-// async fn test() -> String {}
+// async fn test() {
+// }
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
