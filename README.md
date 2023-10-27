@@ -1,3 +1,3 @@
-# icbot
+# xbot
 
-The implementation of [@IcBot](https://taggr.link/#/user/IcBot) running on Taggr.
+The implementation of [@XBot](https://taggr.link/#/user/xbot) running on Taggr.

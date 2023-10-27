@@ -1,24 +1,24 @@
 {
-  "version": 1,
-  "canisters": {
-    "icbot": {
-      "package": "icbot",
-      "candid": "src/icbot/icbot.did",
-      "type": "custom",
-      "wasm": "target/wasm32-unknown-unknown/release/icbot.wasm.gz",
-      "build": "./build.sh icbot"
+    "version": 1,
+    "canisters": {
+        "xbot": {
+            "package": "xbot",
+            "candid": "src/xbot/xbot.did",
+            "type": "custom",
+            "wasm": "target/wasm32-unknown-unknown/release/xbot.wasm.gz",
+            "build": "./build.sh xbot"
+        }
+    },
+    "defaults": {
+        "build": {
+            "packtool": "",
+            "args": ""
+        }
+    },
+    "networks": {
+        "local": {
+            "bind": "127.0.0.1:8000",
+            "type": "ephemeral"
+        }
     }
-  },
-  "defaults": {
-    "build": {
-      "packtool": "",
-      "args": ""
-    }
-  },
-  "networks": {
-    "local": {
-      "bind": "127.0.0.1:8000",
-      "type": "ephemeral"
-    }
-  }
 }

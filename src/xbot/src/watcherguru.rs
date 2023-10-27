@@ -57,7 +57,7 @@ pub async fn go() {
             state_mut().last_wg_message = messages[0].clone().to_string();
 
             for message in messages {
-                post_to_taggr(format!("{}\n  #WatcherGuru", message), Some("NEWS".into())).await;
+                post_to_taggr(format!("{}  \n#WatcherGuru", message), Some("NEWS".into())).await;
             }
         }
         Err(err) => log_error(err),
