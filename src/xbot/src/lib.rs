@@ -81,8 +81,8 @@ async fn daily_tasks() {
 }
 
 async fn hourly_tasks() {
-    whalealert::go().await;
     watcherguru::go().await;
+    whalealert::go().await;
 }
 
 #[ic_cdk_macros::init]
