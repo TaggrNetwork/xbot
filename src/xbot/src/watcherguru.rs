@@ -40,7 +40,7 @@ pub async fn go() {
     };
 
     let log_error = |(r, m)| {
-        state_mut().logs.push(format!(
+        state_mut().logs.push_back(format!(
             "HTTP request to WatcherGuru failed with rejection code={r:?}, Error: {m}"
         ))
     };
@@ -57,7 +57,12 @@ pub async fn go() {
             state_mut().last_wg_message = messages[0].clone().to_string();
 
             for message in messages {
-                post_to_taggr(format!("{}  \n#WatcherGuru", message), Some("NEWS".into())).await;
+                let result =
+                    post_to_taggr(format!("{}  \n#WatcherGuru", message), Some("NEWS".into()))
+                        .await;
+                state_mut()
+                    .logs
+                    .push_back(format!("Taggr response: {:?}", result));
             }
         }
         Err(err) => log_error(err),

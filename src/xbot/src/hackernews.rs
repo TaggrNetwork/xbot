@@ -27,7 +27,7 @@ pub async fn go() {
     };
 
     let log_error = |(r, m)| {
-        state_mut().logs.push(format!(
+        state_mut().logs.push_back(format!(
             "HTTP request to HN failed with rejection code={r:?}, Error: {m}"
         ))
     };
@@ -39,7 +39,7 @@ pub async fn go() {
                 Err(err) => {
                     state_mut()
                         .logs
-                        .push(format!("couldn't deserialize JSON response: {:?}", err));
+                        .push_back(format!("couldn't deserialize JSON response: {:?}", err));
                     return;
                 }
             };
@@ -69,9 +69,10 @@ pub async fn go() {
                     } = match serde_json::from_slice(&response.body) {
                         Ok(val) => val,
                         Err(err) => {
-                            state_mut()
-                                .logs
-                                .push(format!("couldn't deserialize JSON response: {:?}", err));
+                            state_mut().logs.push_back(format!(
+                                "couldn't deserialize JSON response: {:?}",
+                                err
+                            ));
                             return;
                         }
                     };
@@ -83,7 +84,7 @@ pub async fn go() {
                         "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
-                    post_to_taggr(message, None).await;
+                    let _ = post_to_taggr(message, None).await;
                 }
                 Err(err) => log_error(err),
             }

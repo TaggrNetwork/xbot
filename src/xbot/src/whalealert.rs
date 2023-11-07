@@ -11,6 +11,8 @@ pub async fn go() {
     let mut total_blocks = 0;
     let mut max_amount = 0;
     let address_book = get_accounts();
+    let start = state().last_block;
+    let mut last_block;
     loop {
         let start = state().last_block;
         let args = GetBlocksArgs {
@@ -24,7 +26,8 @@ pub async fn go() {
             ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "query_blocks", (args,))
                 .await
                 .expect("couldn't call ledger");
-        state_mut().last_block = response.first_block_index + response.blocks.len() as u64;
+        last_block = response.first_block_index + response.blocks.len() as u64;
+        state_mut().last_block = last_block;
         total_blocks += response.blocks.len();
         let resolver = |acc: &str| {
             address_book
@@ -49,16 +52,18 @@ pub async fn go() {
         }
         if !msgs.is_empty() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
-            post_to_taggr(full_msg.clone(), Some("TAGGR".into())).await;
-            state_mut().logs.push(full_msg);
+            let result = post_to_taggr(full_msg.clone(), Some("TAGGR".into())).await;
+            let logs = &mut state_mut().logs;
+            logs.push_front(full_msg);
+            logs.push_front(format!("Taggr response: {:?}", result));
         }
         if response.blocks.len() < 50 {
             break;
         }
     }
-    state_mut().logs.push(format!(
-        "Total transactions pulled: {} (max e8s: {})",
-        total_blocks, max_amount
+    state_mut().logs.push_front(format!(
+        "Total transactions pulled: {} (max e8s: {}, start: {}, next_start: {})",
+        total_blocks, max_amount, start, last_block
     ));
 }
 

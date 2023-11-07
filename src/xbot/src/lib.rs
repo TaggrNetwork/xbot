@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 use candid::{CandidType, Principal};
 use ic_cdk::{
@@ -15,7 +15,7 @@ mod whalealert;
 
 #[derive(Default, CandidType, Serialize, Deserialize)]
 pub struct State {
-    pub logs: Vec<String>,
+    pub logs: VecDeque<String>,
     pub last_block: u64,
     #[serde(default)]
     pub last_best_story: u64,
@@ -28,8 +28,7 @@ pub struct State {
 
 static mut STATE: Option<State> = None;
 
-async fn post_to_taggr<T: ToString>(body: T, realm: Option<String>) -> String {
-    ic_cdk::println!("Sending: {}", body.to_string());
+async fn post_to_taggr<T: ToString>(body: T, realm: Option<String>) -> Result<u64, String> {
     let blobs: Vec<(String, Vec<u8>)> = Default::default();
     let parent: Option<u64> = None;
     let poll: Option<Vec<u8>> = None;
@@ -39,8 +38,9 @@ async fn post_to_taggr<T: ToString>(body: T, realm: Option<String>) -> String {
         (body.to_string(), blobs, parent, realm, poll),
     )
     .await;
-    ic_cdk::println!("Result: {:?}", &result);
-    format!("{:?}", result)
+    result
+        .map_err(|err| format!("{:?}", err))
+        .and_then(|(val,)| val)
 }
 
 fn state() -> &'static State {
@@ -56,7 +56,7 @@ fn state_mut() -> &'static mut State {
 #[ic_cdk_macros::query]
 fn info(opcode: String) -> String {
     if opcode == "logs" {
-        state().logs.join("\n")
+        state().logs.iter().cloned().collect::<Vec<_>>().join("\n")
     } else {
         let s = state();
         format!(
@@ -76,6 +76,10 @@ fn set_timer() {
 }
 
 async fn daily_tasks() {
+    let logs = &mut state_mut().logs;
+    while logs.len() > 500 {
+        logs.pop_front();
+    }
     modulation::go().await;
     hackernews::go().await;
 }

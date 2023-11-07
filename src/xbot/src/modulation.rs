@@ -15,7 +15,7 @@ pub async fn go() {
     state.modulation = new_modulation;
     state
         .logs
-        .push(format!("Modulation: {} -> {}", modulation, new_modulation));
+        .push_back(format!("Modulation: {} -> {}", modulation, new_modulation));
     let message = if new_modulation > 0
         && new_modulation > modulation
         && (modulation <= 0 || new_modulation / 100 > modulation / 100)
@@ -34,5 +34,5 @@ pub async fn go() {
     } else {
         return;
     };
-    post_to_taggr(message, None).await;
+    let _ = post_to_taggr(message, None).await;
 }
