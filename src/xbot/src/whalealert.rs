@@ -54,14 +54,13 @@ pub async fn go() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
             let result = post_to_taggr(full_msg.clone(), Some("TAGGR".into())).await;
             let logs = &mut state_mut().logs;
-            logs.push_front(full_msg);
-            logs.push_front(format!("Taggr response: {:?}", result));
+            logs.push_back(format!("Taggr response to WhaleAlert: {:?}", result));
         }
         if response.blocks.len() < 50 {
             break;
         }
     }
-    state_mut().logs.push_front(format!(
+    state_mut().logs.push_back(format!(
         "Total transactions pulled: {} (max e8s: {}, start: {}, next_start: {})",
         total_blocks, max_amount, start, last_block
     ));

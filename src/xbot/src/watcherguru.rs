@@ -62,7 +62,7 @@ pub async fn go() {
                         .await;
                 state_mut()
                     .logs
-                    .push_back(format!("Taggr response: {:?}", result));
+                    .push_back(format!("Taggr response to WatcherGuru: {:?}", result));
             }
         }
         Err(err) => log_error(err),

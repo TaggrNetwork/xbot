@@ -54,19 +54,18 @@ fn state_mut() -> &'static mut State {
 // CANISTER METHODS
 
 #[ic_cdk_macros::query]
-fn info(opcode: String) -> String {
+fn info(opcode: String) -> Vec<String> {
     if opcode == "logs" {
-        state().logs.iter().cloned().collect::<Vec<_>>().join("\n")
+        state().logs.iter().cloned().collect::<Vec<_>>()
     } else {
         let s = state();
-        format!(
-            "Logs={}, LastBlock={}, Modulation={}, LastBestStory={}, LastWGMsg={}",
-            s.logs.len(),
-            s.last_block,
-            s.modulation,
-            s.last_best_story,
-            s.last_wg_message
-        )
+        vec![
+            format!("Logs: {}", s.logs.len(),),
+            format!("LastBlock: {}", s.last_block,),
+            format!("Modulation: {}", s.modulation,),
+            format!("LastBestStory: {}", s.last_best_story,),
+            format!("LastWGMsg: {}", s.last_wg_message),
+        ]
     }
 }
 
