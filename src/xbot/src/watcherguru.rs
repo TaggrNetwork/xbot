@@ -18,6 +18,8 @@ fn transform_wg_args(mut args: TransformArgs) -> HttpResponse {
         .map(strip_html)
         .map(|msg| msg.replace("@WatcherGuru", ""))
         .map(|msg| msg.replace("JUST IN:", "**JUST IN**:"))
+        .map(|msg| msg.replace("&#036;", "$"))
+        .map(|msg| msg.replace("&#39;", "'"))
         .collect::<Vec<_>>()
         .into_iter()
         .rev()
