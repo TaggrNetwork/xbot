@@ -56,15 +56,19 @@ pub async fn go() {
                 .take_while(|message| *message != last_msg.as_str())
                 .collect::<Vec<_>>();
 
-            state_mut().last_wg_message = messages[0].clone().to_string();
-
+            let state = state_mut();
             for message in messages {
                 let result =
                     post_to_taggr(format!("{}  \n#WatcherGuru", message), Some("NEWS".into()))
                         .await;
-                state_mut()
+                state
                     .logs
                     .push_back(format!("Taggr response to WatcherGuru: {:?}", result));
+                if result.is_ok() {
+                    state.last_wg_message = message.to_string();
+                } else {
+                    break;
+                }
             }
         }
         Err(err) => log_error(err),
