@@ -12,8 +12,9 @@ pub async fn go() {
     let mut max_amount = 0;
     let address_book = get_accounts();
     let start = state().last_block;
-    let mut last_block;
-    loop {
+    let mut last_block = 0;
+
+    for _ in 0..100 {
         let start = state().last_block;
         let args = GetBlocksArgs {
             start,
@@ -56,10 +57,11 @@ pub async fn go() {
             let logs = &mut state_mut().logs;
             logs.push_back(format!("Taggr response to WhaleAlert: {:?}", result));
         }
-        if response.blocks.len() < 50 {
+        if response.blocks.len() > 0 && response.blocks.len() < 50 {
             break;
         }
     }
+
     state_mut().logs.push_back(format!(
         "Total transactions pulled: {} (max e8s: {}, start: {}, next_start: {})",
         total_blocks, max_amount, start, last_block
