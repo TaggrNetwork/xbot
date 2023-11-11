@@ -10,7 +10,7 @@ use crate::{post_to_taggr, state, state_mut};
 const CYCLES: u128 = 30_000_000_000;
 
 #[ic_cdk_macros::query]
-fn transform_wg_args(mut args: TransformArgs) -> HttpResponse {
+fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
     args.response.headers.clear();
     args.response.body = String::from_utf8_lossy(&args.response.body)
         .split("\n")
@@ -35,7 +35,7 @@ pub async fn go() {
         url: "https://t.me/s/WatcherGuru".to_string(),
         method: HttpMethod::GET,
         transform: Some(TransformContext::from_name(
-            "transform_wg_args".to_string(),
+            "transform_wg_response".to_string(),
             Default::default(),
         )),
         ..Default::default()

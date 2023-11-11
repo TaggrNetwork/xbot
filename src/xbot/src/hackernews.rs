@@ -1,5 +1,6 @@
 use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpMethod,
+    http_request, CanisterHttpRequestArgument, HttpMethod, HttpResponse, TransformArgs,
+    TransformContext,
 };
 use serde::Deserialize;
 
@@ -19,10 +20,20 @@ struct Story {
 
 const CYCLES: u128 = 30_000_000_000;
 
+#[ic_cdk_macros::query]
+fn transform_hn_response(mut args: TransformArgs) -> HttpResponse {
+    args.response.headers.clear();
+    args.response
+}
+
 pub async fn go() {
     let request = CanisterHttpRequestArgument {
         url: "https://hacker-news.firebaseio.com/v0/beststories.json".to_string(),
         method: HttpMethod::GET,
+        transform: Some(TransformContext::from_name(
+            "transform_hn_response".to_string(),
+            Default::default(),
+        )),
         ..Default::default()
     };
 
