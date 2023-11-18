@@ -21,9 +21,6 @@ fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
         .map(|msg| msg.replace("&#036;", "$"))
         .map(|msg| msg.replace("&#39;", "'"))
         .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect::<Vec<_>>()
         .join("\n")
         .as_bytes()
         .to_vec();
@@ -51,10 +48,13 @@ pub async fn go() {
         Ok((response,)) => {
             let last_msg = state().last_wg_message.clone();
             let body = String::from_utf8_lossy(&response.body);
-            let messages = body
-                .split("\n")
-                .take_while(|message| *message != last_msg.as_str())
-                .collect::<Vec<_>>();
+            let messages = body.split("\n");
+            let next_new_message_id = messages
+                .clone()
+                .position(|msg| msg == last_msg)
+                .map(|n| n + 1)
+                .unwrap_or(0);
+            let messages = messages.collect::<Vec<_>>().split_off(next_new_message_id);
 
             let state = state_mut();
             for message in messages {
