@@ -4,7 +4,7 @@ use ic_cdk::api::management_canister::http_request::{
 };
 use serde::Deserialize;
 
-use crate::{post_to_taggr, state, state_mut};
+use crate::{schedule_message, state, state_mut};
 
 #[derive(Deserialize)]
 struct Story {
@@ -95,7 +95,7 @@ pub async fn go() {
                         "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
-                    let _ = post_to_taggr(message, None).await;
+                    schedule_message(message, None);
                 }
                 Err(err) => log_error(err),
             }

@@ -1,4 +1,4 @@
-use super::{post_to_taggr, state, state_mut};
+use super::{schedule_message, state, state_mut};
 use ic_ledger_types::{
     Operation, Tokens, MAINNET_LEDGER_CANISTER_ID, {GetBlocksArgs, QueryBlocksResponse},
 };
@@ -53,9 +53,7 @@ pub async fn go() {
         }
         if !msgs.is_empty() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
-            let result = post_to_taggr(full_msg.clone(), Some("TAGGR".into())).await;
-            let logs = &mut state_mut().logs;
-            logs.push_back(format!("Taggr response to WhaleAlert: {:?}", result));
+            schedule_message(full_msg.clone(), Some("TAGGR".into()));
         }
         if response.blocks.len() > 0 && response.blocks.len() < 50 {
             break;

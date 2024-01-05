@@ -1,4 +1,4 @@
-use super::{post_to_taggr, state, state_mut};
+use super::{schedule_message, state, state_mut};
 use ic_ledger_types::MAINNET_CYCLES_MINTING_CANISTER_ID;
 
 pub async fn go() {
@@ -34,5 +34,5 @@ pub async fn go() {
     } else {
         return;
     };
-    let _ = post_to_taggr(message, None).await;
+    schedule_message(message, None);
 }

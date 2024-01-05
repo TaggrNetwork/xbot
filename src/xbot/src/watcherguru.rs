@@ -5,7 +5,7 @@ use ic_cdk::api::management_canister::http_request::{
     TransformContext,
 };
 
-use crate::{post_to_taggr, state, state_mut};
+use crate::{schedule_message, state, state_mut};
 
 const CYCLES: u128 = 30_000_000_000;
 
@@ -58,17 +58,8 @@ pub async fn go() {
 
             let state = state_mut();
             for message in messages {
-                let result =
-                    post_to_taggr(format!("{}  \n#WatcherGuru", message), Some("NEWS".into()))
-                        .await;
-                state
-                    .logs
-                    .push_back(format!("Taggr response to WatcherGuru: {:?}", result));
-                if result.is_ok() {
-                    state.last_wg_message = message.to_string();
-                } else {
-                    break;
-                }
+                schedule_message(format!("{}  \n#WatcherGuru", message), Some("NEWS".into()));
+                state.last_wg_message = message.to_string();
             }
         }
         Err(err) => log_error(err),

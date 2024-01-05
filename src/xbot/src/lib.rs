@@ -15,20 +15,24 @@ mod whalealert;
 
 #[derive(Default, CandidType, Serialize, Deserialize)]
 pub struct State {
+    pub message_queue: VecDeque<(String, Option<String>)>,
     pub logs: VecDeque<String>,
     pub last_block: u64,
-    #[serde(default)]
     pub last_best_story: u64,
-    #[serde(default)]
     pub last_best_post: String,
     pub modulation: i32,
-    #[serde(default)]
     pub last_wg_message: String,
 }
 
 static mut STATE: Option<State> = None;
 
-async fn post_to_taggr<T: ToString>(body: T, realm: Option<String>) -> Result<u64, String> {
+fn schedule_message<T: ToString>(body: T, realm: Option<String>) {
+    state_mut()
+        .message_queue
+        .push_back((body.to_string(), realm));
+}
+
+async fn send_message<T: ToString>(body: T, realm: Option<String>) -> Result<u64, String> {
     let blobs: Vec<(String, Vec<u8>)> = Default::default();
     let parent: Option<u64> = None;
     let poll: Option<Vec<u8>> = None;
@@ -86,6 +90,15 @@ async fn daily_tasks() {
 async fn hourly_tasks() {
     watcherguru::go().await;
     whalealert::go().await;
+    for _ in 0..10 {
+        if let Some((message, realm)) = state_mut().message_queue.pop_front() {
+            if let Err(err) = send_message(&message, realm.clone()).await {
+                let logs = &mut state_mut().logs;
+                logs.push_back(format!("Taggr response to message {}: {:?}", message, err));
+                state_mut().message_queue.push_front((message, realm));
+            }
+        }
+    }
 }
 
 #[ic_cdk_macros::init]
