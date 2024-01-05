@@ -5,7 +5,7 @@ use ic_ledger_types::{
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashMap;
 
-const WHALE_ALERT: Tokens = Tokens::from_e8s(10000000000000);
+const WHALE_ALERT: Tokens = Tokens::from_e8s(8000000000000); // 80k ICP
 
 pub async fn go() {
     let mut total_blocks = 0;
@@ -55,7 +55,7 @@ pub async fn go() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
             schedule_message(full_msg.clone(), Some("TAGGR".into()));
         }
-        if response.blocks.len() > 0 && response.blocks.len() < 50 {
+        if !response.blocks.is_empty() && response.blocks.len() < 50 {
             break;
         }
     }

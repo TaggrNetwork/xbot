@@ -13,7 +13,7 @@ const CYCLES: u128 = 30_000_000_000;
 fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
     args.response.headers.clear();
     args.response.body = String::from_utf8_lossy(&args.response.body)
-        .split("\n")
+        .split('\n')
         .filter(|message| message.contains("JUST IN"))
         .map(strip_html)
         .map(|msg| msg.replace("@WatcherGuru", ""))
@@ -48,7 +48,7 @@ pub async fn go() {
         Ok((response,)) => {
             let last_msg = state().last_wg_message.clone();
             let body = String::from_utf8_lossy(&response.body);
-            let messages = body.split("\n");
+            let messages = body.split('\n');
             let next_new_message_id = messages
                 .clone()
                 .position(|msg| msg == last_msg)

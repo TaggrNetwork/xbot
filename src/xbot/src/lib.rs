@@ -69,6 +69,7 @@ fn info(opcode: String) -> Vec<String> {
             format!("Modulation: {}", s.modulation,),
             format!("LastBestStory: {}", s.last_best_story,),
             format!("LastWGMsg: {}", s.last_wg_message),
+            format!("Message Queue: {}", s.message_queue.len()),
         ]
     }
 }
