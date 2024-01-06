@@ -18,9 +18,9 @@ pub async fn go() {
             .to_string()
     };
     let start = state().last_block;
-    let mut last_block = 0;
+    let mut last_block = start;
 
-    for _ in 0..1000 {
+    for step in 0..1000 {
         let start = state().last_block;
         let args = GetBlocksArgs {
             start,
@@ -30,10 +30,14 @@ pub async fn go() {
             ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "query_blocks", (args,))
                 .await
                 .expect("couldn't call ledger");
-        total_blocks += response.blocks.len();
+        if step == 0 && response.blocks.is_empty() {
+            state_mut().last_block = response.first_block_index;
+            break;
+        }
         if (response.blocks.len() as u64) < BATCH_SIZE {
             break;
         }
+        total_blocks += response.blocks.len();
         last_block = response.first_block_index + total_blocks as u64;
         state_mut().last_block = last_block;
         let mut msgs = Vec::new();
@@ -58,8 +62,11 @@ pub async fn go() {
     }
 
     state_mut().logs.push_back(format!(
-        "Total transactions pulled: {} (max e8s: {}, start: {}, next_start: {})",
-        total_blocks, max_amount, start, last_block
+        "Total transactions pulled: {} (max e8s: {}, start: {}, last_block: {})",
+        total_blocks,
+        icp(Tokens::from_e8s(max_amount)),
+        start,
+        last_block
     ));
 }
 

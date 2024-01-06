@@ -115,8 +115,7 @@ fn init() {
 }
 
 // #[ic_cdk_macros::update]
-// async fn test() {
-// }
+// async fn test() {}
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
