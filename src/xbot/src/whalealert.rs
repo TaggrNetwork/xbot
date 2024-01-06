@@ -6,36 +6,36 @@ use num_format::{Locale, ToFormattedString};
 use std::collections::HashMap;
 
 const WHALE_ALERT: Tokens = Tokens::from_e8s(8000000000000); // 80k ICP
+const BATCH_SIZE: u64 = 1000;
 
 pub async fn go() {
     let mut total_blocks = 0;
     let mut max_amount = 0;
-    let address_book = get_accounts();
+    let resolver = |acc: &str| {
+        get_accounts()
+            .get(acc)
+            .unwrap_or(&acc[0..6].to_string().as_str())
+            .to_string()
+    };
     let start = state().last_block;
     let mut last_block = 0;
 
-    for _ in 0..100 {
+    for _ in 0..1000 {
         let start = state().last_block;
         let args = GetBlocksArgs {
             start,
-            length: 1000,
-        };
-        let icp = |tokens: Tokens| {
-            (tokens.e8s() / Tokens::SUBDIVIDABLE_BY).to_formatted_string(&Locale::de_CH)
+            length: BATCH_SIZE,
         };
         let (response,): (QueryBlocksResponse,) =
             ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "query_blocks", (args,))
                 .await
                 .expect("couldn't call ledger");
-        last_block = response.first_block_index + response.blocks.len() as u64;
-        state_mut().last_block = last_block;
         total_blocks += response.blocks.len();
-        let resolver = |acc: &str| {
-            address_book
-                .get(acc)
-                .unwrap_or(&acc[0..6].to_string().as_str())
-                .to_string()
-        };
+        if (response.blocks.len() as u64) < BATCH_SIZE {
+            break;
+        }
+        last_block = response.first_block_index + total_blocks as u64;
+        state_mut().last_block = last_block;
         let mut msgs = Vec::new();
         for block in &response.blocks {
             if let Some(Operation::Transfer {
@@ -54,9 +54,6 @@ pub async fn go() {
         if !msgs.is_empty() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
             schedule_message(full_msg.clone(), Some("TAGGR".into()));
-        }
-        if !response.blocks.is_empty() && response.blocks.len() < 50 {
-            break;
         }
     }
 
@@ -127,4 +124,8 @@ pub fn get_accounts<'a>() -> HashMap<&'a str, &'a str> {
     );
 
     map
+}
+
+fn icp(tokens: Tokens) -> String {
+    (tokens.e8s() / Tokens::SUBDIVIDABLE_BY).to_formatted_string(&Locale::de_CH)
 }
