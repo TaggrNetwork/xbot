@@ -32,13 +32,13 @@ pub async fn go() {
                 .expect("couldn't call ledger");
         if step == 0 && response.blocks.is_empty() {
             state_mut().last_block = response.first_block_index;
-            break;
+            continue;
         }
         if (response.blocks.len() as u64) < BATCH_SIZE {
             break;
         }
         total_blocks += response.blocks.len();
-        last_block = response.first_block_index + total_blocks as u64;
+        last_block = start + total_blocks as u64;
         state_mut().last_block = last_block;
         let mut msgs = Vec::new();
         for block in &response.blocks {
@@ -62,10 +62,11 @@ pub async fn go() {
     }
 
     state_mut().logs.push_back(format!(
-        "Total transactions pulled: {} (max e8s: {}, start: {}, last_block: {})",
+        "Total transactions pulled: {} (max e8s: {}, start: {}, last_block: {}, next_block: {})",
         total_blocks,
         icp(Tokens::from_e8s(max_amount)),
         start,
+        start + total_blocks as u64,
         last_block
     ));
 }
