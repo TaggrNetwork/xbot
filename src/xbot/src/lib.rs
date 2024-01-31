@@ -91,7 +91,7 @@ async fn daily_tasks() {
 async fn hourly_tasks() {
     watcherguru::go().await;
     whalealert::go().await;
-    for _ in 0..10 {
+    for _ in 0..5 {
         if let Some((message, realm)) = state_mut().message_queue.pop_front() {
             if let Err(err) = send_message(&message, realm.clone()).await {
                 let logs = &mut state_mut().logs;
