@@ -1,8 +1,10 @@
-use super::{schedule_message, state, state_mut};
+use crate::{mutate, read};
+
+use super::schedule_message;
 use ic_ledger_types::MAINNET_CYCLES_MINTING_CANISTER_ID;
 
 pub async fn go() {
-    let modulation = state().modulation;
+    let modulation = read(|s| s.modulation);
     let (response,): (Result<i32, String>,) = ic_cdk::call(
         MAINNET_CYCLES_MINTING_CANISTER_ID,
         "neuron_maturity_modulation",
@@ -11,11 +13,12 @@ pub async fn go() {
     .await
     .expect("couldn't call cmc");
     let new_modulation = response.expect("couldn't get the modulation");
-    let state = state_mut();
-    state.modulation = new_modulation;
-    state
-        .logs
-        .push_back(format!("Modulation: {} -> {}", modulation, new_modulation));
+    mutate(|state| {
+        state.modulation = new_modulation;
+        state
+            .logs
+            .push_back(format!("Modulation: {} -> {}", modulation, new_modulation));
+    });
     let message = if new_modulation > 0
         && new_modulation > modulation
         && (modulation <= 0 || new_modulation / 100 > modulation / 100)
@@ -34,5 +37,5 @@ pub async fn go() {
     } else {
         return;
     };
-    schedule_message(message, None);
+    mutate(|s| schedule_message(s, message, None));
 }

@@ -4,7 +4,7 @@ use ic_cdk::api::management_canister::http_request::{
 };
 use serde::Deserialize;
 
-use crate::{schedule_message, state, state_mut};
+use crate::{mutate, read, schedule_message};
 
 #[derive(Deserialize)]
 struct Story {
@@ -38,9 +38,11 @@ pub async fn go() {
     };
 
     let log_error = |(r, m)| {
-        state_mut().logs.push_back(format!(
-            "HTTP request to HN failed with rejection code={r:?}, Error: {m}"
-        ))
+        mutate(|state| {
+            state.logs.push_back(format!(
+                "HTTP request to HN failed with rejection code={r:?}, Error: {m}"
+            ))
+        })
     };
 
     match http_request(request, CYCLES).await {
@@ -48,18 +50,20 @@ pub async fn go() {
             let best_stories: Vec<u64> = match serde_json::from_slice(&response.body) {
                 Ok(val) => val,
                 Err(err) => {
-                    state_mut()
-                        .logs
-                        .push_back(format!("couldn't deserialize JSON response: {:?}", err));
+                    mutate(|state| {
+                        state
+                            .logs
+                            .push_back(format!("couldn't deserialize JSON response: {:?}", err))
+                    });
                     return;
                 }
             };
 
             let best_story = best_stories[0];
-            if best_story == state().last_best_story {
+            if best_story == read(|s| s.last_best_story) {
                 return;
             }
-            state_mut().last_best_story = best_story;
+            mutate(|s| s.last_best_story = best_story);
             let request = CanisterHttpRequestArgument {
                 url: format!(
                     "https://hacker-news.firebaseio.com/v0/item/{}.json",
@@ -80,10 +84,12 @@ pub async fn go() {
                     } = match serde_json::from_slice(&response.body) {
                         Ok(val) => val,
                         Err(err) => {
-                            state_mut().logs.push_back(format!(
-                                "couldn't deserialize JSON response: {:?}",
-                                err
-                            ));
+                            mutate(|s| {
+                                s.logs.push_back(format!(
+                                    "couldn't deserialize JSON response: {:?}",
+                                    err
+                                ))
+                            });
                             return;
                         }
                     };
@@ -95,7 +101,7 @@ pub async fn go() {
                         "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
-                    schedule_message(message, None);
+                    mutate(|s| schedule_message(s, message, None));
                 }
                 Err(err) => log_error(err),
             }

@@ -1,4 +1,6 @@
-use super::{schedule_message, state, state_mut};
+use crate::{mutate, read};
+
+use super::schedule_message;
 use ic_ledger_types::{
     Operation, Tokens, MAINNET_LEDGER_CANISTER_ID, {GetBlocksArgs, QueryBlocksResponse},
 };
@@ -17,11 +19,11 @@ pub async fn go() {
             .unwrap_or(&acc[0..6].to_string().as_str())
             .to_string()
     };
-    let start = state().last_block;
+    let start = read(|s| s.last_block);
     let mut last_block = start;
 
     for step in 0..1000 {
-        let start = state().last_block;
+        let start = read(|s| s.last_block);
         let args = GetBlocksArgs {
             start,
             length: BATCH_SIZE,
@@ -31,7 +33,7 @@ pub async fn go() {
                 .await
                 .expect("couldn't call ledger");
         if step == 0 && response.blocks.is_empty() {
-            state_mut().last_block = response.first_block_index;
+            mutate(|s| s.last_block = response.first_block_index);
             continue;
         }
         if (response.blocks.len() as u64) < BATCH_SIZE {
@@ -39,7 +41,7 @@ pub async fn go() {
         }
         total_blocks += response.blocks.len();
         last_block = start + total_blocks as u64;
-        state_mut().last_block = last_block;
+        mutate(|s| s.last_block = last_block);
         let mut msgs = Vec::new();
         for block in &response.blocks {
             if let Some(Operation::Transfer {
@@ -57,18 +59,20 @@ pub async fn go() {
         }
         if !msgs.is_empty() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
-            schedule_message(full_msg.clone(), Some("TAGGR".into()));
+            mutate(|s| schedule_message(s, full_msg.clone(), Some("TAGGR".into())));
         }
     }
 
-    state_mut().logs.push_back(format!(
+    mutate(|s| {
+        s.logs.push_back(format!(
         "Total transactions pulled: {} (max e8s: {}, start: {}, last_block: {}, next_block: {})",
         total_blocks,
         icp(Tokens::from_e8s(max_amount)),
         start,
         start + total_blocks as u64,
         last_block
-    ));
+    ))
+    });
 }
 
 pub fn get_accounts<'a>() -> HashMap<&'a str, &'a str> {

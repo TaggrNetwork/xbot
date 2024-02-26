@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, time::Duration};
+use std::{cell::RefCell, collections::VecDeque, time::Duration};
 
 use candid::{CandidType, Principal};
 use ic_cdk::{
@@ -7,6 +7,24 @@ use ic_cdk::{
 };
 use ic_cdk_timers::set_timer_interval;
 use serde::{Deserialize, Serialize};
+
+thread_local! {
+    static STATE: RefCell<State> = Default::default();
+}
+
+fn read<F, R>(f: F) -> R
+where
+    F: FnOnce(&State) -> R,
+{
+    STATE.with(|cell| f(&cell.borrow()))
+}
+
+fn mutate<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut State) -> R,
+{
+    STATE.with(|cell| f(&mut cell.borrow_mut()))
+}
 
 mod hackernews;
 mod modulation;
@@ -24,12 +42,8 @@ pub struct State {
     pub last_wg_message: String,
 }
 
-static mut STATE: Option<State> = None;
-
-fn schedule_message<T: ToString>(body: T, realm: Option<String>) {
-    state_mut()
-        .message_queue
-        .push_back((body.to_string(), realm));
+fn schedule_message<T: ToString>(state: &mut State, body: T, realm: Option<String>) {
+    state.message_queue.push_back((body.to_string(), realm));
 }
 
 async fn send_message<T: ToString>(body: T, realm: Option<String>) -> Result<u64, String> {
@@ -47,30 +61,23 @@ async fn send_message<T: ToString>(body: T, realm: Option<String>) -> Result<u64
         .and_then(|(val,)| val)
 }
 
-fn state() -> &'static State {
-    unsafe { STATE.as_ref().expect("No state was initialized") }
-}
-
-fn state_mut() -> &'static mut State {
-    unsafe { STATE.as_mut().expect("No state was initialized") }
-}
-
 // CANISTER METHODS
 
 #[ic_cdk_macros::query]
 fn info(opcode: String) -> Vec<String> {
     if opcode == "logs" {
-        state().logs.iter().cloned().collect::<Vec<_>>()
+        read(|state| state.logs.iter().cloned().collect::<Vec<_>>())
     } else {
-        let s = state();
-        vec![
-            format!("Logs: {}", s.logs.len(),),
-            format!("LastBlock: {}", s.last_block,),
-            format!("Modulation: {}", s.modulation,),
-            format!("LastBestStory: {}", s.last_best_story,),
-            format!("LastWGMsg: {}", s.last_wg_message),
-            format!("Message Queue: {}", s.message_queue.len()),
-        ]
+        read(|s| {
+            vec![
+                format!("Logs: {}", s.logs.len(),),
+                format!("LastBlock: {}", s.last_block,),
+                format!("Modulation: {}", s.modulation,),
+                format!("LastBestStory: {}", s.last_best_story,),
+                format!("LastWGMsg: {}", s.last_wg_message),
+                format!("Message Queue: {}", s.message_queue.len()),
+            ]
+        })
     }
 }
 
@@ -80,10 +87,12 @@ fn set_timer() {
 }
 
 async fn daily_tasks() {
-    let logs = &mut state_mut().logs;
-    while logs.len() > 500 {
-        logs.pop_front();
-    }
+    mutate(|state| {
+        let logs = &mut state.logs;
+        while logs.len() > 500 {
+            logs.pop_front();
+        }
+    });
     modulation::go().await;
     hackernews::go().await;
 }
@@ -92,11 +101,13 @@ async fn hourly_tasks() {
     watcherguru::go().await;
     whalealert::go().await;
     for _ in 0..5 {
-        if let Some((message, realm)) = state_mut().message_queue.pop_front() {
+        if let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) {
             if let Err(err) = send_message(&message, realm.clone()).await {
-                let logs = &mut state_mut().logs;
-                logs.push_back(format!("Taggr response to message {}: {:?}", message, err));
-                state_mut().message_queue.push_front((message, realm));
+                mutate(|state| {
+                    let logs = &mut state.logs;
+                    logs.push_back(format!("Taggr response to message {}: {:?}", message, err));
+                    state.message_queue.push_front((message, realm));
+                })
             }
         }
     }
@@ -104,13 +115,6 @@ async fn hourly_tasks() {
 
 #[ic_cdk_macros::init]
 fn init() {
-    let state: State = State {
-        last_block: 6557316,
-        ..Default::default()
-    };
-    unsafe {
-        STATE = Some(state);
-    }
     set_timer();
 }
 
@@ -119,7 +123,7 @@ fn init() {
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
-    let buffer: Vec<u8> = bincode::serialize(state()).expect("couldn't serialize the state");
+    let buffer: Vec<u8> = read(|s| bincode::serialize(s)).expect("couldn't serialize the state");
     let writer = &mut stable::StableWriter::default();
     let _ = writer.write(&buffer);
 }
@@ -128,8 +132,6 @@ fn pre_upgrade() {
 fn post_upgrade() {
     let bytes = stable::stable_bytes();
     let state: State = bincode::deserialize(&bytes).unwrap();
-    unsafe {
-        STATE = Some(state);
-    }
+    STATE.with(|cell| cell.replace(state));
     set_timer();
 }

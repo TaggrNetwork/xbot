@@ -5,7 +5,7 @@ use ic_cdk::api::management_canister::http_request::{
     TransformContext,
 };
 
-use crate::{schedule_message, state, state_mut};
+use crate::{mutate, read, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
 
@@ -39,14 +39,16 @@ pub async fn go() {
     };
 
     let log_error = |(r, m)| {
-        state_mut().logs.push_back(format!(
-            "HTTP request to WatcherGuru failed with rejection code={r:?}, Error: {m}"
-        ))
+        mutate(|s| {
+            s.logs.push_back(format!(
+                "HTTP request to WatcherGuru failed with rejection code={r:?}, Error: {m}"
+            ))
+        })
     };
 
     match http_request(request, CYCLES).await {
         Ok((response,)) => {
-            let last_msg = state().last_wg_message.clone();
+            let last_msg = read(|s| s.last_wg_message.clone());
             let body = String::from_utf8_lossy(&response.body);
             let messages = body.split('\n');
             let next_new_message_id = messages
@@ -56,11 +58,16 @@ pub async fn go() {
                 .unwrap_or(0);
             let messages = messages.collect::<Vec<_>>().split_off(next_new_message_id);
 
-            let state = state_mut();
-            for message in messages {
-                schedule_message(format!("{}  \n#WatcherGuru", message), Some("NEWS".into()));
-                state.last_wg_message = message.to_string();
-            }
+            mutate(|state| {
+                for message in messages {
+                    schedule_message(
+                        state,
+                        format!("{}  \n#WatcherGuru", message),
+                        Some("NEWS".into()),
+                    );
+                    state.last_wg_message = message.to_string();
+                }
+            })
         }
         Err(err) => log_error(err),
     }
