@@ -30,6 +30,7 @@ pub async fn go() {
     let request = CanisterHttpRequestArgument {
         url: "https://hacker-news.firebaseio.com/v0/beststories.json".to_string(),
         method: HttpMethod::GET,
+        max_response_bytes: Some(3000),
         transform: Some(TransformContext::from_name(
             "transform_hn_response".to_string(),
             Default::default(),
@@ -65,6 +66,7 @@ pub async fn go() {
             }
             mutate(|s| s.last_best_story = best_story);
             let request = CanisterHttpRequestArgument {
+                max_response_bytes: Some(3000),
                 url: format!(
                     "https://hacker-news.firebaseio.com/v0/item/{}.json",
                     best_story

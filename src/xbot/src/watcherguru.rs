@@ -30,6 +30,7 @@ fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
 pub async fn go() {
     let request = CanisterHttpRequestArgument {
         url: "https://t.me/s/WatcherGuru".to_string(),
+        max_response_bytes: Some(100_000),
         method: HttpMethod::GET,
         transform: Some(TransformContext::from_name(
             "transform_wg_response".to_string(),

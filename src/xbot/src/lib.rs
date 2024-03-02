@@ -95,11 +95,6 @@ async fn daily_tasks() {
     });
     modulation::go().await;
     hackernews::go().await;
-}
-
-async fn hourly_tasks() {
-    watcherguru::go().await;
-    whalealert::go().await;
     for _ in 0..5 {
         if let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) {
             if let Err(err) = send_message(&message, realm.clone()).await {
@@ -113,13 +108,21 @@ async fn hourly_tasks() {
     }
 }
 
+async fn hourly_tasks() {
+    watcherguru::go().await;
+    whalealert::go().await;
+}
+
 #[ic_cdk_macros::init]
 fn init() {
     set_timer();
 }
 
 // #[ic_cdk_macros::update]
-// async fn test() {}
+// async fn test() {
+//     mutate(|state| {
+//     })
+// }
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
