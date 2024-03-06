@@ -95,22 +95,20 @@ async fn daily_tasks() {
     });
     modulation::go().await;
     hackernews::go().await;
-    for _ in 0..5 {
-        if let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) {
-            if let Err(err) = send_message(&message, realm.clone()).await {
-                mutate(|state| {
-                    let logs = &mut state.logs;
-                    logs.push_back(format!("Taggr response to message {}: {:?}", message, err));
-                    state.message_queue.push_front((message, realm));
-                })
-            }
-        }
-    }
 }
 
 async fn hourly_tasks() {
     watcherguru::go().await;
     whalealert::go().await;
+    if let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) {
+        if let Err(err) = send_message(&message, realm.clone()).await {
+            mutate(|state| {
+                let logs = &mut state.logs;
+                logs.push_back(format!("Taggr response to message {}: {:?}", message, err));
+                state.message_queue.push_front((message, realm));
+            })
+        }
+    }
 }
 
 #[ic_cdk_macros::init]
