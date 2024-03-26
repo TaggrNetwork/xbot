@@ -84,6 +84,7 @@ fn info(opcode: String) -> Vec<String> {
 fn set_timer() {
     let _id = set_timer_interval(Duration::from_secs(4 * 60 * 60), || spawn(hourly_tasks()));
     let _id = set_timer_interval(Duration::from_secs(24 * 60 * 60), || spawn(daily_tasks()));
+    let _id = set_timer_interval(Duration::from_secs(24 * 60 * 30), || spawn(messages()));
 }
 
 async fn daily_tasks() {
@@ -100,6 +101,9 @@ async fn daily_tasks() {
 async fn hourly_tasks() {
     watcherguru::go().await;
     whalealert::go().await;
+}
+
+async fn messages() {
     if let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) {
         if let Err(err) = send_message(&message, realm.clone()).await {
             mutate(|state| {
