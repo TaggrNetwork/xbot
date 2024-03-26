@@ -100,7 +100,7 @@ async fn daily_tasks() {
 
 async fn hourly_tasks() {
     watcherguru::go().await;
-    whalealert::go().await;
+    // whalealert::go().await;
 }
 
 async fn messages() {
