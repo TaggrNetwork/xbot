@@ -12,14 +12,23 @@ const CYCLES: u128 = 30_000_000_000;
 #[ic_cdk_macros::query]
 fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
     args.response.headers.clear();
+    let re = regex::Regex::new(r#"<a.+?href="([^"]+)".*?>.*?Full Story.*?<\/a>"#).unwrap();
+    let line_formating = |line: &str| {
+        let line = if line.contains("Full Story") {
+            &re.replace_all(line, " More [here]($1).")
+        } else {
+            line
+        };
+        strip_html(line)
+            .replace("@WatcherGuru", "")
+            .replace("JUST IN:", "**JUST IN**:")
+            .replace("&#036;", "$")
+            .replace("&#39;", "'")
+    };
     args.response.body = String::from_utf8_lossy(&args.response.body)
         .split('\n')
         .filter(|message| message.contains("JUST IN"))
-        .map(strip_html)
-        .map(|msg| msg.replace("@WatcherGuru", ""))
-        .map(|msg| msg.replace("JUST IN:", "**JUST IN**:"))
-        .map(|msg| msg.replace("&#036;", "$"))
-        .map(|msg| msg.replace("&#39;", "'"))
+        .map(line_formating)
         .collect::<Vec<_>>()
         .join("\n")
         .as_bytes()
