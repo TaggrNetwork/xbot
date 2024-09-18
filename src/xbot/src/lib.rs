@@ -1,4 +1,8 @@
-use std::{cell::RefCell, collections::VecDeque, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashSet, VecDeque},
+    time::Duration,
+};
 
 use candid::{CandidType, Principal};
 use ic_cdk::{
@@ -39,7 +43,8 @@ pub struct State {
     pub last_best_story: u64,
     pub last_best_post: String,
     pub modulation: i32,
-    pub last_wg_message: String,
+    pub wg_messages: HashSet<String>,
+    pub wg_messages_timestamps: BTreeMap<u64, Vec<String>>,
 }
 
 fn schedule_message<T: ToString>(state: &mut State, body: T, realm: Option<String>) {
@@ -73,8 +78,15 @@ fn info(opcode: String) -> Vec<String> {
                 format!("Logs: {}", s.logs.len(),),
                 format!("LastBlock: {}", s.last_block,),
                 format!("Modulation: {}", s.modulation,),
-                format!("LastBestStory: {}", s.last_best_story,),
-                format!("LastWGMsg: {}", s.last_wg_message),
+                format!("LastBestStory: {}", s.last_best_story),
+                format!(
+                    "WGMsgs: {} (timestamps: {})",
+                    s.wg_messages.len(),
+                    s.wg_messages_timestamps
+                        .values()
+                        .map(|msgs| msgs.len())
+                        .sum::<usize>()
+                ),
                 format!("Message Queue: {}", s.message_queue.len()),
             ]
         })
@@ -123,11 +135,10 @@ fn init() {
     set_timer();
 }
 
-// #[ic_cdk_macros::update]
-// async fn test() {
-//     mutate(|state| {
-//     })
-// }
+//#[ic_cdk_macros::update]
+//async fn test() {
+//    mutate(|state| {})
+//}
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {

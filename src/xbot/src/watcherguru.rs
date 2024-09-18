@@ -5,7 +5,7 @@ use ic_cdk::api::management_canister::http_request::{
     TransformContext,
 };
 
-use crate::{mutate, read, schedule_message};
+use crate::{mutate, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
 
@@ -58,24 +58,32 @@ pub async fn go() {
 
     match http_request(request, CYCLES).await {
         Ok((response,)) => {
-            let last_msg = read(|s| s.last_wg_message.clone());
             let body = String::from_utf8_lossy(&response.body);
             let messages = body.split('\n');
-            let next_new_message_id = messages
-                .clone()
-                .position(|msg| msg == last_msg)
-                .map(|n| n + 1)
-                .unwrap_or(0);
-            let messages = messages.collect::<Vec<_>>().split_off(next_new_message_id);
+            let time = ic_cdk::api::time();
 
             mutate(|state| {
                 for message in messages {
+                    if state.wg_messages.contains(message) {
+                        continue;
+                    }
                     schedule_message(
                         state,
                         format!("{}  \n#WatcherGuru", message),
                         Some("NEWS".into()),
                     );
-                    state.last_wg_message = message.to_string();
+                    state.wg_messages.insert(message.to_string());
+                    let entry = state.wg_messages_timestamps.entry(time).or_default();
+                    entry.push(message.to_string());
+                }
+
+                while state.wg_messages.len() > 1000 {
+                    let Some((_, msgs)) = state.wg_messages_timestamps.pop_first() else {
+                        break;
+                    };
+                    for msg in msgs {
+                        state.wg_messages.remove(&msg);
+                    }
                 }
             })
         }
