@@ -8,6 +8,7 @@ use ic_cdk::api::management_canister::http_request::{
 use crate::{mutate, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
+const MAX_MSG_BACKLOG: usize = 50;
 
 #[ic_cdk_macros::query]
 fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
@@ -77,7 +78,7 @@ pub async fn go() {
                     entry.push(message.to_string());
                 }
 
-                while state.wg_messages.len() > 1000 {
+                while state.wg_messages.len() > MAX_MSG_BACKLOG {
                     let Some((_, msgs)) = state.wg_messages_timestamps.pop_first() else {
                         break;
                     };
