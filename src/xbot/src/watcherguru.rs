@@ -8,7 +8,7 @@ use ic_cdk::api::management_canister::http_request::{
 use crate::{mutate, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
-const MAX_MSG_BACKLOG: usize = 50;
+const MAX_MSG_BACKLOG: usize = 1000;
 
 #[ic_cdk_macros::query]
 fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {

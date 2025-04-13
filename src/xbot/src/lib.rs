@@ -80,12 +80,13 @@ fn info(opcode: String) -> Vec<String> {
                 format!("Modulation: {}", s.modulation,),
                 format!("LastBestStory: {}", s.last_best_story),
                 format!(
-                    "WGMsgs: {} (timestamps: {})",
+                    "WatcherGuru: seen_msgs={}, timestamped_msg={}, queue={}",
                     s.wg_messages.len(),
                     s.wg_messages_timestamps
                         .values()
                         .map(|msgs| msgs.len())
-                        .sum::<usize>()
+                        .sum::<usize>(),
+                    s.message_queue.len()
                 ),
                 format!("Message Queue: {}", s.message_queue.len()),
             ]
@@ -135,10 +136,9 @@ fn init() {
     set_timer();
 }
 
-//#[ic_cdk_macros::update]
-//async fn test() {
-//    mutate(|state| {})
-//}
+// #[ic_cdk_macros::update]
+// async fn fixture() {
+// }
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
