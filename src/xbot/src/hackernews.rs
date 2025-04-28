@@ -1,6 +1,9 @@
-use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpMethod, HttpResponse, TransformArgs,
-    TransformContext,
+use ic_cdk::api::{
+    call::RejectionCode,
+    management_canister::http_request::{
+        http_request, CanisterHttpRequestArgument, HttpMethod, HttpResponse, TransformArgs,
+        TransformContext,
+    },
 };
 use serde::Deserialize;
 
@@ -19,6 +22,7 @@ struct Story {
 }
 
 const CYCLES: u128 = 30_000_000_000;
+const MAX_STORIES_PER_DAY: usize = 6;
 
 #[ic_cdk_macros::query]
 fn transform_hn_response(mut args: TransformArgs) -> HttpResponse {
@@ -38,14 +42,6 @@ pub async fn go() {
         ..Default::default()
     };
 
-    let log_error = |(r, m)| {
-        mutate(|state| {
-            state.logs.push_back(format!(
-                "HTTP request to HN failed with rejection code={r:?}, Error: {m}"
-            ))
-        })
-    };
-
     match http_request(request, CYCLES).await {
         Ok((response,)) => {
             let best_stories: Vec<u64> = match serde_json::from_slice(&response.body) {
@@ -60,54 +56,70 @@ pub async fn go() {
                 }
             };
 
-            let best_story = best_stories[0];
-            if best_story == read(|s| s.last_best_story) {
-                return;
-            }
-            mutate(|s| s.last_best_story = best_story);
-            let request = CanisterHttpRequestArgument {
-                max_response_bytes: Some(3000),
-                url: format!(
-                    "https://hacker-news.firebaseio.com/v0/item/{}.json",
-                    best_story
-                ),
-                method: HttpMethod::GET,
-                ..Default::default()
-            };
-            match http_request(request, CYCLES).await {
-                Ok((response,)) => {
-                    let Story {
-                        id,
-                        title,
-                        score,
-                        kids,
-                        url,
-                        ..
-                    } = match serde_json::from_slice(&response.body) {
-                        Ok(val) => val,
-                        Err(err) => {
-                            mutate(|s| {
-                                s.logs.push_back(format!(
-                                    "couldn't deserialize JSON response: {:?}",
-                                    err
-                                ))
-                            });
-                            return;
-                        }
-                    };
-                    let publisher = url::Url::parse(&url)
-                        .ok()
-                        .and_then(|u| u.host_str().map(|host| host.to_string()))
-                        .unwrap_or_default();
-                    let message = format!(
-                        "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
-                        title, url, publisher, score, kids.len(), id
-                    );
-                    mutate(|s| schedule_message(s, message, None));
+            let mut last_best_story = read(|s| s.last_best_story);
+            let mut total = 0;
+            for id in best_stories.into_iter() {
+                if total >= MAX_STORIES_PER_DAY {
+                    break;
                 }
-                Err(err) => log_error(err),
+                if id <= last_best_story {
+                    continue;
+                }
+                fetch_story(id).await;
+                last_best_story = id;
+                total += 1;
             }
+            mutate(|s| s.last_best_story = last_best_story);
         }
         Err(err) => log_error(err),
     }
+}
+
+async fn fetch_story(id: u64) {
+    let request = CanisterHttpRequestArgument {
+        max_response_bytes: Some(3000),
+        url: format!("https://hacker-news.firebaseio.com/v0/item/{}.json", id),
+        method: HttpMethod::GET,
+        ..Default::default()
+    };
+    match http_request(request, CYCLES).await {
+        Ok((response,)) => {
+            let Story {
+                id,
+                title,
+                score,
+                kids,
+                url,
+                ..
+            } = match serde_json::from_slice(&response.body) {
+                Ok(val) => val,
+                Err(err) => {
+                    mutate(|s| {
+                        s.logs
+                            .push_back(format!("couldn't deserialize JSON response: {:?}", err))
+                    });
+                    return;
+                }
+            };
+            let publisher = url::Url::parse(&url)
+                .ok()
+                .and_then(|u| u.host_str().map(|host| host.to_string()))
+                .unwrap_or_default();
+            let message = format!(
+                        "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
+                        title, url, publisher, score, kids.len(), id
+                    );
+            mutate(|s| schedule_message(s, message, None));
+        }
+        Err(err) => log_error(err),
+    }
+}
+
+fn log_error(err: (RejectionCode, String)) {
+    mutate(|state| {
+        state.logs.push_back(format!(
+            "HTTP request to HN failed with rejection code={:?}, Error: {}",
+            err.0, err.1
+        ))
+    })
 }
