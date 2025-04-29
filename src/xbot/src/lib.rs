@@ -97,8 +97,9 @@ fn info(opcode: String) -> Vec<String> {
 fn set_timer() {
     let _id = set_timer_interval(Duration::from_secs(4 * 60 * 60), || spawn(hourly_tasks()));
     let _id = set_timer_interval(Duration::from_secs(24 * 60 * 60), || spawn(daily_tasks()));
+    // We're sending one message per half an hour at most
     let _id = set_timer_interval(
-        Duration::from_secs(60 * 15),
+        Duration::from_secs(60 * 30),
         || spawn(process_one_message()),
     );
 }
