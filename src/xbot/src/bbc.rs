@@ -1,6 +1,6 @@
 use chrono::DateTime;
 use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpMethod, HttpResponse, TransformArgs,
+    http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
     TransformContext,
 };
 
@@ -16,13 +16,23 @@ fn transform_bbc_response(mut args: TransformArgs) -> HttpResponse {
 
 pub async fn go() -> Result<(), String> {
     let request = CanisterHttpRequestArgument {
-        url: "https://feeds.bbci.co.uk/news/rss.xml".to_string(),
+        url: "https://idempotent-proxy-cf-worker.zensh.workers.dev/news/rss.xml".to_string(),
         method: HttpMethod::GET,
         max_response_bytes: Some(40000),
         transform: Some(TransformContext::from_name(
-            "transform_bbs_response".to_string(),
+            "transform_bbc_response".to_string(),
             Default::default(),
         )),
+        headers: vec![
+            HttpHeader {
+                name: "x-forwarded-host".into(),
+                value: "feeds.bbci.co.uk".into(),
+            },
+            HttpHeader {
+                name: "idempotency-key".into(),
+                value: "xbot".into(),
+            },
+        ],
         ..Default::default()
     };
     let last_timestamp = read(|s| s.last_bbc_story_timestamp);

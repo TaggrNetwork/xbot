@@ -81,13 +81,12 @@ fn info(opcode: String) -> Vec<String> {
                 format!("Modulation: {}", s.modulation,),
                 format!("LastBestStory: {}", s.last_best_story),
                 format!(
-                    "WatcherGuru: seen_msgs={}, timestamped_msg={}, queue={}",
+                    "WatcherGuru: seen_msgs={}, timestamped_msg={}",
                     s.wg_messages.len(),
                     s.wg_messages_timestamps
                         .values()
                         .map(|msgs| msgs.len())
                         .sum::<usize>(),
-                    s.message_queue.len()
                 ),
                 format!("Message Queue: {}", s.message_queue.len()),
             ]
@@ -140,7 +139,6 @@ fn init() {
 
 #[ic_cdk_macros::update]
 async fn fixture() {
-    // log_if_error(bbc::go().await);
     log_if_error(whalealert::go().await);
 }
 
