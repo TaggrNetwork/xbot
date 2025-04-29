@@ -109,7 +109,7 @@ async fn fetch_story(id: u64) {
                         "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
-            mutate(|s| schedule_message(s, message, None));
+            mutate(|s| schedule_message(s, message, Some("TECHNOLOGY".into())));
         }
         Err(err) => log_error(err),
     }
