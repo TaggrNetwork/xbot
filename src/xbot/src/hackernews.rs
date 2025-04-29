@@ -1,13 +1,10 @@
-use ic_cdk::api::{
-    call::RejectionCode,
-    management_canister::http_request::{
-        http_request, CanisterHttpRequestArgument, HttpMethod, HttpResponse, TransformArgs,
-        TransformContext,
-    },
+use ic_cdk::api::management_canister::http_request::{
+    http_request, CanisterHttpRequestArgument, HttpMethod, HttpResponse, TransformArgs,
+    TransformContext,
 };
 use serde::Deserialize;
 
-use crate::{mutate, read, schedule_message};
+use crate::{log_call_error, mutate, read, schedule_message};
 
 #[derive(Deserialize)]
 struct Story {
@@ -71,7 +68,7 @@ pub async fn go() {
             }
             mutate(|s| s.last_best_story = last_best_story);
         }
-        Err(err) => log_error(err),
+        Err(err) => log_call_error(err),
     }
 }
 
@@ -106,20 +103,11 @@ async fn fetch_story(id: u64) {
                 .and_then(|u| u.host_str().map(|host| host.to_string()))
                 .unwrap_or_default();
             let message = format!(
-                        "## [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
+                        "# [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
             mutate(|s| schedule_message(s, message, Some("TECHNOLOGY".into())));
         }
-        Err(err) => log_error(err),
+        Err(err) => log_call_error(err),
     }
-}
-
-fn log_error(err: (RejectionCode, String)) {
-    mutate(|state| {
-        state.logs.push_back(format!(
-            "HTTP request to HN failed with rejection code={:?}, Error: {}",
-            err.0, err.1
-        ))
-    })
 }

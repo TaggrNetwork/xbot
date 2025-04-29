@@ -5,7 +5,7 @@ use ic_cdk::api::management_canister::http_request::{
     TransformContext,
 };
 
-use crate::{mutate, schedule_message};
+use crate::{log_call_error, mutate, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
 const MAX_MSG_BACKLOG: usize = 1000;
@@ -49,14 +49,6 @@ pub async fn go() {
         ..Default::default()
     };
 
-    let log_error = |(r, m)| {
-        mutate(|s| {
-            s.logs.push_back(format!(
-                "HTTP request to WatcherGuru failed with rejection code={r:?}, Error: {m}"
-            ))
-        })
-    };
-
     match http_request(request, CYCLES).await {
         Ok((response,)) => {
             let body = String::from_utf8_lossy(&response.body);
@@ -88,7 +80,7 @@ pub async fn go() {
                 }
             })
         }
-        Err(err) => log_error(err),
+        Err(err) => log_call_error(err),
     }
 }
 
