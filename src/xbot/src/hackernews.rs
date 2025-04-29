@@ -4,7 +4,7 @@ use ic_cdk::api::management_canister::http_request::{
 };
 use serde::Deserialize;
 
-use crate::{log_call_error, mutate, read, schedule_message};
+use crate::{mutate, read, schedule_message};
 
 #[derive(Deserialize)]
 struct Story {
@@ -27,7 +27,7 @@ fn transform_hn_response(mut args: TransformArgs) -> HttpResponse {
     args.response
 }
 
-pub async fn go() {
+pub async fn go() -> Result<(), String> {
     let request = CanisterHttpRequestArgument {
         url: "https://hacker-news.firebaseio.com/v0/beststories.json".to_string(),
         method: HttpMethod::GET,
@@ -39,75 +39,56 @@ pub async fn go() {
         ..Default::default()
     };
 
-    match http_request(request, CYCLES).await {
-        Ok((response,)) => {
-            let best_stories: Vec<u64> = match serde_json::from_slice(&response.body) {
-                Ok(val) => val,
-                Err(err) => {
-                    mutate(|state| {
-                        state
-                            .logs
-                            .push_back(format!("couldn't deserialize JSON response: {:?}", err))
-                    });
-                    return;
-                }
-            };
+    let (response,) = http_request(request, CYCLES)
+        .await
+        .map_err(|err| format!("http_request failed: {:?}", err))?;
+    let best_stories: Vec<u64> = serde_json::from_slice(&response.body)
+        .map_err(|err| format!("json parsing failed: {:?}", err))?;
 
-            let mut last_best_story = read(|s| s.last_best_story);
-            let mut total = 0;
-            for id in best_stories.into_iter() {
-                if total >= MAX_STORIES_PER_DAY {
-                    break;
-                }
-                if id <= last_best_story {
-                    continue;
-                }
-                fetch_story(id).await;
-                last_best_story = id;
-                total += 1;
-            }
-            mutate(|s| s.last_best_story = last_best_story);
+    let mut last_best_story = read(|s| s.last_best_story);
+    let mut total = 0;
+    for id in best_stories.into_iter() {
+        if total >= MAX_STORIES_PER_DAY {
+            break;
         }
-        Err(err) => log_call_error(err),
+        if id <= last_best_story {
+            continue;
+        }
+        fetch_story(id).await?;
+        last_best_story = id;
+        total += 1;
     }
+    mutate(|s| s.last_best_story = last_best_story);
+    Ok(())
 }
 
-async fn fetch_story(id: u64) {
+async fn fetch_story(id: u64) -> Result<(), String> {
     let request = CanisterHttpRequestArgument {
         max_response_bytes: Some(3000),
         url: format!("https://hacker-news.firebaseio.com/v0/item/{}.json", id),
         method: HttpMethod::GET,
         ..Default::default()
     };
-    match http_request(request, CYCLES).await {
-        Ok((response,)) => {
-            let Story {
-                id,
-                title,
-                score,
-                kids,
-                url,
-                ..
-            } = match serde_json::from_slice(&response.body) {
-                Ok(val) => val,
-                Err(err) => {
-                    mutate(|s| {
-                        s.logs
-                            .push_back(format!("couldn't deserialize JSON response: {:?}", err))
-                    });
-                    return;
-                }
-            };
-            let publisher = url::Url::parse(&url)
-                .ok()
-                .and_then(|u| u.host_str().map(|host| host.to_string()))
-                .unwrap_or_default();
-            let message = format!(
+    let (response,) = http_request(request, CYCLES)
+        .await
+        .map_err(|err| format!("http_request failed: {:?}", err))?;
+    let Story {
+        id,
+        title,
+        score,
+        kids,
+        url,
+        ..
+    } = serde_json::from_slice(&response.body)
+        .map_err(|err| format!("json parsing failed: {:?}", err))?;
+    let publisher = url::Url::parse(&url)
+        .ok()
+        .and_then(|u| u.host_str().map(|host| host.to_string()))
+        .unwrap_or_default();
+    let message = format!(
                         "# [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
                         title, url, publisher, score, kids.len(), id
                     );
-            mutate(|s| schedule_message(s, message, Some("TECHNOLOGY".into())));
-        }
-        Err(err) => log_call_error(err),
-    }
+    mutate(|s| schedule_message(s, message, Some("TECHNOLOGY".into())));
+    Ok(())
 }
