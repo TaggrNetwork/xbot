@@ -84,7 +84,7 @@ fn parse_items(body: Vec<u8>) -> Result<Vec<(u64, String)>, String> {
                 .map(|t| t.timestamp() as u64)
                 .unwrap_or_default();
 
-            (timestamp, format!("[{title}]({link}): {description}  #BBC"))
+            (timestamp, format!("#BBC: [{title}]({link}). {description}"))
         })
         .collect();
 
