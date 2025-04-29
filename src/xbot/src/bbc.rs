@@ -16,7 +16,7 @@ fn transform_bbc_response(mut args: TransformArgs) -> HttpResponse {
 
 pub async fn go() -> Result<(), String> {
     let request = CanisterHttpRequestArgument {
-        url: "https://idempotent-proxy-cf-worker.zensh.workers.dev/news/rss.xml".to_string(),
+        url: "https://idempotent-proxy-cf-worker.zensh.workers.dev/world/rss.xml".to_string(),
         method: HttpMethod::GET,
         max_response_bytes: Some(40000),
         transform: Some(TransformContext::from_name(

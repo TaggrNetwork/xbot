@@ -80,6 +80,7 @@ fn info(opcode: String) -> Vec<String> {
                 format!("LastBlock: {}", s.last_block,),
                 format!("Modulation: {}", s.modulation,),
                 format!("LastBestStory: {}", s.last_best_story),
+                format!("LastBBCStory: {}", s.last_bbc_story_timestamp),
                 format!(
                     "WatcherGuru: seen_msgs={}, timestamped_msg={}",
                     s.wg_messages.len(),
@@ -139,9 +140,7 @@ fn init() {
 }
 
 #[ic_cdk_macros::update]
-async fn fixture() {
-    log_if_error(whalealert::go().await);
-}
+async fn fixture() {}
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
