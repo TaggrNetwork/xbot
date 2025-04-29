@@ -6,10 +6,7 @@ use std::{
 
 use candid::{CandidType, Principal};
 use ic_cdk::{
-    api::{
-        call::{CallResult, RejectionCode},
-        stable,
-    },
+    api::{call::CallResult, stable},
     spawn,
 };
 use ic_cdk_timers::set_timer_interval;
@@ -45,9 +42,7 @@ pub struct State {
     pub logs: VecDeque<String>,
     pub last_block: u64,
     pub last_best_story: u64,
-    #[serde(default)]
     pub last_bbc_story_timestamp: u64,
-    pub last_best_post: String,
     pub modulation: i32,
     pub wg_messages: HashSet<String>,
     pub wg_messages_timestamps: BTreeMap<u64, Vec<String>>,
@@ -116,13 +111,13 @@ async fn daily_tasks() {
             logs.pop_front();
         }
     });
-    modulation::go().await;
-    hackernews::go().await;
-    log_if_error(bbc::go().await);
+    log_if_error(modulation::go().await);
+    log_if_error(hackernews::go().await);
 }
 
 async fn hourly_tasks() {
-    watcherguru::go().await;
+    log_if_error(watcherguru::go().await);
+    log_if_error(bbc::go().await);
     // whalealert::go().await;
 }
 
@@ -145,6 +140,7 @@ fn init() {
 
 // #[ic_cdk_macros::update]
 // async fn fixture() {
+//     log_if_error(bbc::go().await);
 // }
 
 #[ic_cdk_macros::pre_upgrade]
@@ -166,13 +162,4 @@ fn log_if_error<T>(result: Result<T, String>) {
     if let Err(err) = result {
         mutate(|state| state.logs.push_back(format!("Error: {}", err)))
     }
-}
-
-fn log_call_error(err: (RejectionCode, String)) {
-    mutate(|state| {
-        state.logs.push_back(format!(
-            "HTTP request to HN failed with rejection code={:?}, Error: {}",
-            err.0, err.1
-        ))
-    })
 }

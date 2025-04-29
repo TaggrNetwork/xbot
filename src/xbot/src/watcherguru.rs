@@ -5,7 +5,7 @@ use ic_cdk::api::management_canister::http_request::{
     TransformContext,
 };
 
-use crate::{log_call_error, mutate, schedule_message};
+use crate::{mutate, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
 const MAX_MSG_BACKLOG: usize = 1000;
@@ -37,7 +37,7 @@ fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
     args.response
 }
 
-pub async fn go() {
+pub async fn go() -> Result<(), String> {
     let request = CanisterHttpRequestArgument {
         url: "https://t.me/s/WatcherGuru".to_string(),
         max_response_bytes: Some(100_000),
@@ -49,39 +49,39 @@ pub async fn go() {
         ..Default::default()
     };
 
-    match http_request(request, CYCLES).await {
-        Ok((response,)) => {
-            let body = String::from_utf8_lossy(&response.body);
-            let messages = body.split('\n');
-            let time = ic_cdk::api::time();
+    let (response,) = http_request(request, CYCLES)
+        .await
+        .map_err(|err| format!("http_request failed: {:?}", err))?;
+    let body = String::from_utf8_lossy(&response.body);
+    let messages = body.split('\n');
+    let time = ic_cdk::api::time();
 
-            mutate(|state| {
-                for message in messages {
-                    if state.wg_messages.contains(message) {
-                        continue;
-                    }
-                    schedule_message(
-                        state,
-                        format!("{}  \n#WatcherGuru", message),
-                        Some("NEWS".into()),
-                    );
-                    state.wg_messages.insert(message.to_string());
-                    let entry = state.wg_messages_timestamps.entry(time).or_default();
-                    entry.push(message.to_string());
-                }
-
-                while state.wg_messages.len() > MAX_MSG_BACKLOG {
-                    let Some((_, msgs)) = state.wg_messages_timestamps.pop_first() else {
-                        break;
-                    };
-                    for msg in msgs {
-                        state.wg_messages.remove(&msg);
-                    }
-                }
-            })
+    mutate(|state| {
+        for message in messages {
+            if state.wg_messages.contains(message) {
+                continue;
+            }
+            schedule_message(
+                state,
+                format!("{}  \n#WatcherGuru", message),
+                Some("NEWS".into()),
+            );
+            state.wg_messages.insert(message.to_string());
+            let entry = state.wg_messages_timestamps.entry(time).or_default();
+            entry.push(message.to_string());
         }
-        Err(err) => log_call_error(err),
-    }
+
+        while state.wg_messages.len() > MAX_MSG_BACKLOG {
+            let Some((_, msgs)) = state.wg_messages_timestamps.pop_first() else {
+                break;
+            };
+            for msg in msgs {
+                state.wg_messages.remove(&msg);
+            }
+        }
+    });
+
+    Ok(())
 }
 
 fn strip_html(input: &str) -> String {

@@ -3,7 +3,7 @@ use crate::{mutate, read};
 use super::schedule_message;
 use ic_ledger_types::MAINNET_CYCLES_MINTING_CANISTER_ID;
 
-pub async fn go() {
+pub async fn go() -> Result<(), String> {
     let modulation = read(|s| s.modulation);
     let (response,): (Result<i32, String>,) = ic_cdk::call(
         MAINNET_CYCLES_MINTING_CANISTER_ID,
@@ -11,7 +11,7 @@ pub async fn go() {
         ((),),
     )
     .await
-    .expect("couldn't call cmc");
+    .map_err(|err| format!("couldn't call cmc: {:?}", err))?;
     let new_modulation = response.expect("couldn't get the modulation");
     mutate(|state| {
         state.modulation = new_modulation;
@@ -35,7 +35,8 @@ pub async fn go() {
     } else if new_modulation < 0 && modulation >= 0 {
         "📉 The neuron maturity #modulation is now below `100` ".to_owned()
     } else {
-        return;
+        return Ok(());
     };
     mutate(|s| schedule_message(s, message, None));
+    Ok(())
 }

@@ -81,6 +81,7 @@ fn parse_items(body: Vec<u8>) -> Result<Vec<(u64, String)>, String> {
     Ok(items)
 }
 
+#[cfg(test)]
 mod tests {
     use super::parse_items;
 
