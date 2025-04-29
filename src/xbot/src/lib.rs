@@ -34,7 +34,7 @@ mod bbc;
 mod hackernews;
 mod modulation;
 mod watcherguru;
-// mod whalealert;
+mod whalealert;
 
 #[derive(Default, CandidType, Serialize, Deserialize)]
 pub struct State {
@@ -118,7 +118,7 @@ async fn daily_tasks() {
 async fn hourly_tasks() {
     log_if_error(watcherguru::go().await);
     log_if_error(bbc::go().await);
-    // whalealert::go().await;
+    log_if_error(whalealert::go().await);
 }
 
 async fn process_one_message() {
@@ -138,10 +138,11 @@ fn init() {
     set_timer();
 }
 
-// #[ic_cdk_macros::update]
-// async fn fixture() {
-//     log_if_error(bbc::go().await);
-// }
+#[ic_cdk_macros::update]
+async fn fixture() {
+    // log_if_error(bbc::go().await);
+    log_if_error(whalealert::go().await);
+}
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {

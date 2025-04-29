@@ -10,7 +10,7 @@ use std::collections::HashMap;
 const WHALE_ALERT: Tokens = Tokens::from_e8s(8000000000000); // 80k ICP
 const BATCH_SIZE: u64 = 1000;
 
-pub async fn go() {
+pub async fn go() -> Result<(), String> {
     let mut total_blocks = 0;
     let mut max_amount = 0;
     let resolver = |acc: &str| {
@@ -31,7 +31,7 @@ pub async fn go() {
         let (response,): (QueryBlocksResponse,) =
             ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "query_blocks", (args,))
                 .await
-                .expect("couldn't call ledger");
+                .map_err(|err| format!("canister call failed: {:?}", err))?;
         if step == 0 && response.blocks.is_empty() {
             mutate(|s| s.last_block = response.first_block_index);
             continue;
@@ -59,7 +59,7 @@ pub async fn go() {
         }
         if !msgs.is_empty() {
             let full_msg = format!("🚨 #WhaleAlert\n\n{}", msgs.join("\n"));
-            mutate(|s| schedule_message(s, full_msg.clone(), Some("TAGGR".into())));
+            mutate(|s| schedule_message(s, full_msg.clone(), Some("ICP".into())));
         }
     }
 
@@ -70,9 +70,9 @@ pub async fn go() {
         icp(Tokens::from_e8s(max_amount)),
         start,
         start + total_blocks as u64,
-        last_block
-    ))
+        last_block))
     });
+    Ok(())
 }
 
 pub fn get_accounts<'a>() -> HashMap<&'a str, &'a str> {

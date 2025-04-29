@@ -7,5 +7,8 @@ logs:
 stats:
 	dfx canister --network ic call --query xbot info '("stats")'
 
+fixture:
+	dfx canister --network ic call xbot fixture
+
 status:
 	dfx --identity prod canister --network ic status xbot
