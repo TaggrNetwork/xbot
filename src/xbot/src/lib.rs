@@ -89,7 +89,11 @@ fn info(opcode: String) -> Vec<String> {
                         .map(|msgs| msgs.len())
                         .sum::<usize>(),
                 ),
-                format!("Message Queue: {}", s.message_queue.len()),
+                format!(
+                    "Message Queue ({}): {:?}",
+                    s.message_queue.len(),
+                    &s.message_queue
+                ),
             ]
         })
     }
