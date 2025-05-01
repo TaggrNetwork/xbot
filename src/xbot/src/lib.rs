@@ -127,14 +127,16 @@ async fn hourly_tasks() {
 }
 
 async fn process_one_message() {
-    if let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) {
-        if let Err(err) = send_message(&message, realm.clone()).await {
-            mutate(|state| {
-                let logs = &mut state.logs;
-                logs.push_back(format!("Taggr response to message {}: {:?}", message, err));
-                state.message_queue.push_front((message, realm));
-            })
-        }
+    let Some((message, realm)) = mutate(|state| state.message_queue.pop_front()) else {
+        return;
+    };
+    if let Err(err) = send_message(&message, realm.clone()).await {
+        mutate(|state| {
+            state
+                .logs
+                .push_back(format!("Taggr response to message {}: {:?}", message, err));
+            state.message_queue.push_front((message, realm));
+        })
     }
 }
 
