@@ -3,39 +3,49 @@ use ic_cdk::api::management_canister::http_request::{
     http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
     TransformContext,
 };
+use url::Url;
 
 use crate::{mutate, read, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
 
 #[ic_cdk_macros::query]
-fn transform_bbc_response(mut args: TransformArgs) -> HttpResponse {
+fn transform_rss_response(mut args: TransformArgs) -> HttpResponse {
     args.response.headers.clear();
     args.response
 }
 
-pub async fn go() -> Result<(), String> {
+pub async fn go(id: &str, feed: &str, realm: &str) -> Result<(), String> {
+    let url = Url::parse(feed).map_err(|err| format!("url parsing failed: {:?}", err))?;
     let request = CanisterHttpRequestArgument {
-        url: "https://idempotent-proxy-cf-worker.zensh.workers.dev/news/world/rss.xml".to_string(),
+        url: format!(
+            "https://idempotent-proxy-cf-worker.zensh.workers.dev{}",
+            url.path()
+        ),
         method: HttpMethod::GET,
         max_response_bytes: Some(80000),
         transform: Some(TransformContext::from_name(
-            "transform_bbc_response".to_string(),
+            "transform_rss_response".to_string(),
             Default::default(),
         )),
         headers: vec![
             HttpHeader {
                 name: "x-forwarded-host".into(),
-                value: "feeds.bbci.co.uk".into(),
+                value: url.host().map(|host| host.to_string()).unwrap_or_default(),
             },
             HttpHeader {
                 name: "idempotency-key".into(),
-                value: "xbot".into(),
+                value: id.into(),
             },
         ],
         ..Default::default()
     };
-    let last_timestamp = read(|s| s.last_bbc_story_timestamp);
+    let last_timestamp = read(|s| {
+        s.last_rss_story_timestamp
+            .get(id)
+            .cloned()
+            .unwrap_or_default()
+    });
 
     let (response,) = http_request(request, CYCLES)
         .await
@@ -46,8 +56,8 @@ pub async fn go() -> Result<(), String> {
         .filter(|(t, _)| *t > last_timestamp)
     {
         mutate(|state| {
-            schedule_message(state, message, Some("NEWS".into()));
-            state.last_bbc_story_timestamp = timestamp;
+            schedule_message(state, format!("#{}: {}", id, message), Some(realm.into()));
+            state.last_rss_story_timestamp.insert(id.into(), timestamp);
         })
     }
 
@@ -84,7 +94,7 @@ fn parse_items(body: Vec<u8>) -> Result<Vec<(u64, String)>, String> {
                 .map(|t| t.timestamp() as u64)
                 .unwrap_or_default();
 
-            (timestamp, format!("#BBC: [{title}]({link}). {description}"))
+            (timestamp, format!("[{title}]({link}). {description}"))
         })
         .collect();
 

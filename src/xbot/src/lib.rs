@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashSet, VecDeque},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     time::Duration,
 };
 
@@ -32,9 +32,9 @@ where
 
 const POSTING_FREQ_MIN: u64 = 15;
 
-mod bbc;
 mod hackernews;
 mod modulation;
+mod rss;
 mod watcherguru;
 mod whalealert;
 
@@ -44,7 +44,7 @@ pub struct State {
     pub logs: VecDeque<String>,
     pub last_block: u64,
     pub last_best_story: u64,
-    pub last_bbc_story_timestamp: u64,
+    pub last_rss_story_timestamp: HashMap<String, u64>,
     pub modulation: i32,
     pub wg_messages: HashSet<String>,
     pub wg_messages_timestamps: BTreeMap<u64, Vec<String>>,
@@ -82,7 +82,7 @@ fn info(opcode: String) -> Vec<String> {
                 format!("LastBlock: {}", s.last_block,),
                 format!("Modulation: {}", s.modulation,),
                 format!("LastBestStory: {}", s.last_best_story),
-                format!("LastBBCStory: {}", s.last_bbc_story_timestamp),
+                format!("LastRSSTimestamps: {:?}", &s.last_rss_story_timestamp),
                 format!(
                     "WatcherGuru: seen_msgs={}, timestamped_msg={}",
                     s.wg_messages.len(),
@@ -123,7 +123,15 @@ async fn daily_tasks() {
 
 async fn hourly_tasks() {
     log_if_error(watcherguru::go().await);
-    log_if_error(bbc::go().await);
+    log_if_error(rss::go("BBC", "https://feeds.bbci.co.uk/news/world/rss.xml", "NEWS").await);
+    log_if_error(
+        rss::go(
+            "CoinTelegraph",
+            "https://cointelegraph.com/editors_pick_rss",
+            "CRYPTO",
+        )
+        .await,
+    );
     log_if_error(whalealert::go().await);
 }
 
