@@ -8,7 +8,6 @@ use ic_cdk::api::management_canister::http_request::{
 use crate::{mutate, schedule_message};
 
 const CYCLES: u128 = 30_000_000_000;
-const MAX_MSG_BACKLOG: usize = 1000;
 
 #[ic_cdk_macros::query]
 fn transform_wg_response(mut args: TransformArgs) -> HttpResponse {
@@ -54,30 +53,14 @@ pub async fn go() -> Result<(), String> {
         .map_err(|err| format!("http_request failed: {:?}", err))?;
     let body = String::from_utf8_lossy(&response.body);
     let messages = body.split('\n');
-    let time = ic_cdk::api::time();
 
     mutate(|state| {
         for message in messages {
-            if state.wg_messages.contains(message) {
-                continue;
-            }
             schedule_message(
                 state,
                 format!("{}  \n#WatcherGuru", message),
                 Some("NEWS".into()),
             );
-            state.wg_messages.insert(message.to_string());
-            let entry = state.wg_messages_timestamps.entry(time).or_default();
-            entry.push(message.to_string());
-        }
-
-        while state.wg_messages.len() > MAX_MSG_BACKLOG {
-            let Some((_, msgs)) = state.wg_messages_timestamps.pop_first() else {
-                break;
-            };
-            for msg in msgs {
-                state.wg_messages.remove(&msg);
-            }
         }
     });
 

@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     time::Duration,
 };
 
@@ -31,6 +31,7 @@ where
 }
 
 const POSTING_FREQ_MIN: u64 = 15;
+const MAX_MSG_MEMORY: usize = 500;
 
 mod hackernews;
 mod modulation;
@@ -46,12 +47,19 @@ pub struct State {
     pub last_best_story: u64,
     pub last_rss_story_timestamp: HashMap<String, u64>,
     pub modulation: i32,
-    pub wg_messages: HashSet<String>,
-    pub wg_messages_timestamps: BTreeMap<u64, Vec<String>>,
+    pub seen_messages: VecDeque<String>,
 }
 
 fn schedule_message<T: ToString>(state: &mut State, body: T, realm: Option<String>) {
-    state.message_queue.push_back((body.to_string(), realm));
+    let msg = body.to_string();
+    if state.seen_messages.contains(&msg) {
+        return;
+    }
+    state.message_queue.push_back((msg.clone(), realm));
+    state.seen_messages.push_front(msg);
+    while state.seen_messages.len() > MAX_MSG_MEMORY {
+        state.seen_messages.pop_back();
+    }
 }
 
 async fn send_message<T: ToString>(body: T, realm: Option<String>) -> Result<u64, String> {
@@ -83,14 +91,7 @@ fn info(opcode: String) -> Vec<String> {
                 format!("Modulation: {}", s.modulation,),
                 format!("LastBestStory: {}", s.last_best_story),
                 format!("LastRSSTimestamps: {:?}", &s.last_rss_story_timestamp),
-                format!(
-                    "WatcherGuru: seen_msgs={}, timestamped_msg={}",
-                    s.wg_messages.len(),
-                    s.wg_messages_timestamps
-                        .values()
-                        .map(|msgs| msgs.len())
-                        .sum::<usize>(),
-                ),
+                format!("SeenMessages={}", s.seen_messages.len(),),
                 format!(
                     "Message Queue ({}): {:?}",
                     s.message_queue.len(),
@@ -156,6 +157,16 @@ fn init() {
 
 #[ic_cdk_macros::update]
 async fn fixture() {}
+
+// #[ic_cdk_macros::update]
+// async fn update_state() {
+//     hourly_tasks().await;
+//     daily_tasks().await;
+//     mutate(|s| {
+//         s.last_block = 23036000;
+//         s.message_queue.clear();
+//     });
+// }
 
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
