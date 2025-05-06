@@ -94,7 +94,21 @@ fn parse_items(body: Vec<u8>) -> Result<Vec<(u64, String)>, String> {
                 .map(|t| t.timestamp() as u64)
                 .unwrap_or_default();
 
-            (timestamp, format!("[{title}]({link}). {description}"))
+            let punctuation = if title
+                .chars()
+                .last()
+                .map(|c| vec!['.', '!', '?'].contains(&c))
+                .unwrap_or_default()
+            {
+                ""
+            } else {
+                "."
+            };
+
+            (
+                timestamp,
+                format!("[{title}]({link}){punctuation} {description}"),
+            )
         })
         .collect();
 
