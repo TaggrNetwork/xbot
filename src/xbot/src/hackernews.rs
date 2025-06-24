@@ -9,10 +9,10 @@ use crate::{mutate, read, schedule_message};
 #[derive(Deserialize)]
 struct Story {
     id: u32,
-    kids: Vec<u32>,
-    score: u32,
     title: String,
     url: String,
+    // kids: Vec<u32>,
+    // score: u32,
     // time: u64,
     // descendants: u32,
     // by: String,
@@ -72,23 +72,16 @@ async fn fetch_story(id: u64) -> Result<(), String> {
     let (response,) = http_request(request, CYCLES)
         .await
         .map_err(|err| format!("http_request failed: {:?}", err))?;
-    let Story {
-        id,
-        title,
-        score,
-        kids,
-        url,
-        ..
-    } = serde_json::from_slice(&response.body)
+    let Story { id, title, url, .. } = serde_json::from_slice(&response.body)
         .map_err(|err| format!("json parsing failed: {:?}", err))?;
     let publisher = url::Url::parse(&url)
         .ok()
         .and_then(|u| u.host_str().map(|host| host.to_string()))
         .unwrap_or_default();
     let message = format!(
-                        "# [{}]({}) ({})\n`{}` upvotes, [{} comments](https://news.ycombinator.com/item?id={})\n#HackerNews",
-                        title, url, publisher, score, kids.len(), id
-                    );
+        "# #HackerNews: [{}]({})\nFrom {}, [Comments](https://news.ycombinator.com/item?id={})",
+        title, url, publisher, id
+    );
     mutate(|s| schedule_message(s, message, Some("TECHNOLOGY".into())));
     Ok(())
 }
